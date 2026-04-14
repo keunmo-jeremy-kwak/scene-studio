@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bridge-platform.example/schemas/bridge-page.schema.json",
+  "title": "BridgePageResponse",
+  "type": "object",
+  "required": ["page", "content", "products"],
+  "properties": {
+    "page": {
+      "$ref": "./entities.schema.json#/$defs/BridgePage"
+    },
+    "content": {
+      "$ref": "./entities.schema.json#/$defs/PageContentBundle"
+    },
+    "products": {
+      "type": "array",
+      "items": {
+        "$ref": "./entities.schema.json#/$defs/Product"
+      }
+    }
+  }
+}

@@ -1,0 +1,383 @@
+openapi: 3.1.0
+info:
+  title: Bridge Platform API
+  version: 0.1.0
+  description: |
+    API for dynamic bridge pages that load creator/seller-specific storytelling, commerce,
+    community, ad mediation, and gamification experiences based on URL parameters.
+servers:
+  - url: https://api.bridge-platform.example
+
+tags:
+  - name: BridgePage
+  - name: Content
+  - name: Product
+  - name: Community
+  - name: Rewards
+  - name: Coupon
+  - name: Ads
+  - name: Analytics
+
+paths:
+  /api/v1/bridge-pages/resolve:
+    get:
+      tags: [BridgePage]
+      summary: Resolve a bridge page variant from URL parameters.
+      parameters:
+        - in: query
+          name: s
+          required: true
+          schema:
+            type: string
+          description: Seller or creator key (e.g. minjung-beauty).
+        - in: query
+          name: utm_source
+          schema: { type: string }
+        - in: query
+          name: utm_campaign
+          schema: { type: string }
+        - in: query
+          name: locale
+          schema: { type: string, default: ko-KR }
+      responses:
+        '200':
+          description: Resolved page payload.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BridgePageResponse'
+
+  /api/v1/bridge-pages/{pageId}/content:
+    get:
+      tags: [Content]
+      summary: Fetch storytelling/community/social modules for a page.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      responses:
+        '200':
+          description: Page modules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageContentBundle'
+
+  /api/v1/bridge-pages/{pageId}/products:
+    get:
+      tags: [Product]
+      summary: List products (own or partner catalog) exposed on the bridge page.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      responses:
+        '200':
+          description: Product list.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+
+  /api/v1/bridge-pages/{pageId}/comments:
+    get:
+      tags: [Community]
+      summary: Get visible comments/reviews.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      responses:
+        '200':
+          description: Comment feed.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+    post:
+      tags: [Community]
+      summary: Submit a comment/review.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentCreateRequest'
+      responses:
+        '201':
+          description: Created.
+
+  /api/v1/bridge-pages/{pageId}/ad-decision:
+    get:
+      tags: [Ads]
+      summary: Decide SSP mediation banner for current visitor context.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+        - in: query
+          name: placement
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Ad creative decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BannerDecision'
+
+  /api/v1/bridge-pages/{pageId}/rewards/claim:
+    post:
+      tags: [Rewards]
+      summary: Claim gamification/reward-ad reward.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RewardClaimRequest'
+      responses:
+        '200':
+          description: Claim result.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RewardClaimResponse'
+
+  /api/v1/bridge-pages/{pageId}/coupons/issue:
+    post:
+      tags: [Coupon]
+      summary: Issue coupon after meeting conditions.
+      parameters:
+        - $ref: '#/components/parameters/PageId'
+      responses:
+        '200':
+          description: Coupon issued.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Coupon'
+
+  /api/v1/events:
+    post:
+      tags: [Analytics]
+      summary: Ingest behavioral events for funnel/conversion optimization.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventIngestRequest'
+      responses:
+        '202':
+          description: Accepted.
+
+components:
+  parameters:
+    PageId:
+      in: path
+      name: pageId
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    BridgePageResponse:
+      type: object
+      properties:
+        page:
+          $ref: '#/components/schemas/BridgePage'
+        content:
+          $ref: '#/components/schemas/PageContentBundle'
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+      required: [page, content, products]
+
+    BridgePage:
+      type: object
+      properties:
+        id: { type: string }
+        slug: { type: string }
+        sellerKey: { type: string }
+        title: { type: string }
+        heroCta:
+          $ref: '#/components/schemas/CTA'
+        sns:
+          type: array
+          items:
+            $ref: '#/components/schemas/SocialProfile'
+        followerCount:
+          type: integer
+          minimum: 0
+      required: [id, slug, sellerKey, title]
+
+    PageContentBundle:
+      type: object
+      properties:
+        storytellingBlocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/StoryBlock'
+        communityEnabled: { type: boolean }
+        rewardAdEnabled: { type: boolean }
+        gamification:
+          $ref: '#/components/schemas/GamificationConfig'
+      required: [storytellingBlocks, communityEnabled, rewardAdEnabled]
+
+    StoryBlock:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [hero, before_after, proof, faq, cta, custom_html]
+        headline: { type: string }
+        body: { type: string }
+        mediaUrl: { type: string, format: uri }
+        order: { type: integer, minimum: 0 }
+      required: [type, order]
+
+    CTA:
+      type: object
+      properties:
+        label: { type: string }
+        targetUrl: { type: string, format: uri }
+      required: [label, targetUrl]
+
+    SocialProfile:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum: [instagram, youtube, tiktok, x, naver_blog, thread]
+        handle: { type: string }
+        url: { type: string, format: uri }
+      required: [channel, handle, url]
+
+    Product:
+      type: object
+      properties:
+        id: { type: string }
+        sourceType:
+          type: string
+          enum: [own, partner, supplier]
+        sellerId: { type: string }
+        name: { type: string }
+        imageUrl: { type: string, format: uri }
+        price:
+          type: object
+          properties:
+            amount: { type: number, minimum: 0 }
+            currency: { type: string, default: KRW }
+          required: [amount, currency]
+        description: { type: string }
+        landingUrl: { type: string, format: uri }
+      required: [id, sourceType, name, price, landingUrl]
+
+    Comment:
+      type: object
+      properties:
+        id: { type: string }
+        nickname: { type: string }
+        body: { type: string }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+        createdAt: { type: string, format: date-time }
+      required: [id, nickname, body, createdAt]
+
+    CommentCreateRequest:
+      type: object
+      properties:
+        nickname: { type: string }
+        body: { type: string, minLength: 1, maxLength: 1000 }
+        rating: { type: integer, minimum: 1, maximum: 5 }
+      required: [nickname, body]
+
+    BannerDecision:
+      type: object
+      properties:
+        placement: { type: string }
+        network: { type: string }
+        creativeUrl: { type: string, format: uri }
+        clickUrl: { type: string, format: uri }
+        ttlSeconds: { type: integer, minimum: 1 }
+      required: [placement, network, creativeUrl, clickUrl]
+
+    GamificationConfig:
+      type: object
+      properties:
+        missionType:
+          type: string
+          enum: [watch_content, click_cta, comment, share, reward_ad]
+        rewardType:
+          type: string
+          enum: [coupon, points, digital_content]
+        rewardValue: { type: string }
+      required: [missionType, rewardType]
+
+    RewardClaimRequest:
+      type: object
+      properties:
+        missionType:
+          type: string
+        proofToken:
+          type: string
+      required: [missionType, proofToken]
+
+    RewardClaimResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        rewardType: { type: string }
+        rewardValue: { type: string }
+        coupon:
+          $ref: '#/components/schemas/Coupon'
+      required: [success]
+
+    Coupon:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        discountType:
+          type: string
+          enum: [amount, percent]
+        discountValue: { type: number, minimum: 0 }
+        expiresAt: { type: string, format: date-time }
+      required: [id, code, discountType, discountValue]
+
+    EventIngestRequest:
+      type: object
+      properties:
+        sessionId: { type: string }
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+                enum:
+                  - page_view
+                  - story_block_view
+                  - cta_click
+                  - product_click
+                  - comment_submit
+                  - reward_ad_complete
+                  - coupon_issue
+                  - outbound_conversion
+              occurredAt:
+                type: string
+                format: date-time
+              meta:
+                type: object
+                additionalProperties: true
+            required: [name, occurredAt]
+      required: [sessionId, events]

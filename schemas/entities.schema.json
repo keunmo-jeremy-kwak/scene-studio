@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bridge-platform.example/schemas/entities.schema.json",
+  "title": "Bridge Platform Entities",
+  "$defs": {
+    "BridgePage": {
+      "type": "object",
+      "required": ["id", "slug", "sellerKey", "title"],
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "sellerKey": { "type": "string" },
+        "title": { "type": "string" },
+        "followerCount": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "PageContentBundle": {
+      "type": "object",
+      "required": ["storytellingBlocks", "communityEnabled", "rewardAdEnabled"],
+      "properties": {
+        "storytellingBlocks": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/StoryBlock" }
+        },
+        "communityEnabled": { "type": "boolean" },
+        "rewardAdEnabled": { "type": "boolean" }
+      }
+    },
+    "StoryBlock": {
+      "type": "object",
+      "required": ["type", "order"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["hero", "before_after", "proof", "faq", "cta", "custom_html"]
+        },
+        "headline": { "type": "string" },
+        "body": { "type": "string" },
+        "mediaUrl": { "type": "string", "format": "uri" },
+        "order": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "Product": {
+      "type": "object",
+      "required": ["id", "sourceType", "name", "price", "landingUrl"],
+      "properties": {
+        "id": { "type": "string" },
+        "sourceType": { "type": "string", "enum": ["own", "partner", "supplier"] },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "landingUrl": { "type": "string", "format": "uri" },
+        "price": {
+          "type": "object",
+          "required": ["amount", "currency"],
+          "properties": {
+            "amount": { "type": "number", "minimum": 0 },
+            "currency": { "type": "string", "default": "KRW" }
+          }
+        }
+      }
+    }
+  }
+}
